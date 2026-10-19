@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>同理心花园 | Empathy Garden</title>
+    <style>
+        :root {
+            --bg-garden: #eef5f0;
+            --text-main: #2b3a2e;
+            --primary: #3d6a46;
+            --accent: #d4a373;
+            --color-yellow: #ffd93d;
+            --color-gray: #94a3b8;
+            --color-green: #6bcbc4;
+            --color-red: #ff6b6b;
+            --color-blue: #4d96ff;
+            --color-purple: #a78bfa;
+        }
+
+        body.high-contrast {
+            --bg-garden: #000000;
+            --text-main: #FFD700;
+            --primary: #FFD700;
+            --accent: #FF8C00;
+            --color-yellow: #FFD700;
+        }
+        body.high-contrast .dashboard,
+        body.high-contrast .notes-panel,
+        body.high-contrast .modal-content,
+        body.high-contrast .treehole-panel {
+            background: #1a1a1a !important;
+            border: 2px solid #FFD700;
+        }
+        body.high-contrast .note-item { background: #222; border-left-color: #FFD700; color: #FFD700; }
+        body.high-contrast .note-ai { background: #000; color: #FFD700; border-left-color: #FFD700; }
+        body.high-contrast .poster { background: #000; }
+        body.high-contrast .garden-stage { background: #111; box-shadow: inset 0 -20px 0 #222; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+        body { background: var(--bg-garden); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; transition: all 0.3s; }
+        
+        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); box-shadow: 0 2px 10px rgba(0,0,0,0.05); flex-wrap: wrap; gap: 10px;}
+        .logo { font-size: 1.2rem; font-weight: bold; color: var(--primary); }
+        .stats { display: flex; gap: 15px; font-size: 0.9rem; font-weight: bold; align-items: center;}
+        .toolbar { display: flex; gap: 10px; align-items: center;}
+        .icon-btn { padding: 8px 12px; border-radius: 20px; border: 2px solid var(--primary); background: transparent; color: var(--primary); font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .icon-btn.active { background: var(--primary); color: #fff; }
+        .lang-select { padding: 8px 12px; border-radius: 20px; border: 2px solid var(--primary); background: #fff; color: var(--primary); font-weight: bold; cursor: pointer; outline: none;}
+
+        .main-container { flex: 1; max-width: 800px; width: 100%; margin: 0 auto; padding: 20px; display: grid; grid-template-rows: auto 1fr auto; gap: 20px; }
+        .garden-stage { background: linear-gradient(#e0f2fe, #f0fdf4); border-radius: 24px; position: relative; height: 350px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; overflow: hidden; box-shadow: inset 0 -20px 0 #dcfce7, 0 10px 25px rgba(0,0,0,0.05); padding-bottom: 20px; }
+        
+        .plant-name-tag { position: absolute; top: 20px; background: rgba(255,255,255,0.9); padding: 5px 15px; border-radius: 20px; font-weight: bold; color: var(--primary); border: 2px solid var(--primary); box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; z-index: 20; }
+        .plant-container { position: relative; cursor: pointer; transition: transform 0.2s; z-index: 10; display: flex; flex-direction: column; align-items: center; }
+        .plant-container:active { transform: scale(0.95); }
+        .plant-img { font-size: 5rem; transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+        .roots { width: 40px; height: 10px; border: 3px solid #854d0e; border-top: none; border-radius: 0 0 10px 10px; margin-top: -5px; opacity: 0.7; transition: all 0.5s; }
+        
+        .water-drop { position: absolute; top: -50px; font-size: 2rem; animation: fall 1s forwards cubic-bezier(0.25, 0.46, 0.45, 0.94); z-index: 5; }
+        @keyframes fall { 0% { top: 10%; opacity: 0; transform: scale(0.5); } 30% { opacity: 1; transform: scale(1); } 90% { opacity: 1; top: 75%; transform: scale(1); } 100% { top: 80%; opacity: 0; transform: scale(1.5); } }
+        
+        .float-text { position: absolute; bottom: 100px; color: var(--primary); font-weight: bold; animation: fadeUp 1.5s forwards; pointer-events: none; z-index: 20; text-shadow: 0 1px 3px rgba(255,255,255,0.8); }
+        @keyframes fadeUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-30px); } }
+        
+        @keyframes glow { 0% { filter: drop-shadow(0 0 5px rgba(61, 106, 70, 0.5)); } 50% { filter: drop-shadow(0 0 25px rgba(61, 106, 70, 0.9)); } 100% { filter: drop-shadow(0 0 5px rgba(61, 106, 70, 0.5)); } }
+        .special-glow { animation: glow 2s infinite; }
+
+        .dashboard { background: #fff; border-radius: 24px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .section-title { font-size: 1.1rem; margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 5px; font-weight: bold; }
+        
+        .color-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-bottom: 20px; }
+        .color-btn { border: none; padding: 12px 5px; border-radius: 16px; color: #fff; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-align: center; font-size: 0.9rem; line-height: 1.4; }
+        .color-btn small { display: block; font-weight: normal; font-size: 0.75rem; opacity: 0.9; }
+        .color-btn.active { transform: scale(1.08); box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--primary); }
+        .color-btn[data-mood="helpless"] { background: var(--color-gray); }
+        .color-btn[data-mood="secure"] { background: var(--color-green); }
+        .color-btn[data-mood="frustrated"] { background: var(--color-red); }
+        .color-btn[data-mood="empathy"] { background: var(--color-purple); }
+        .color-btn[data-mood="reflect"] { background: var(--color-blue); }
+
+        .intensity-box { margin-bottom: 25px; }
+        .slider { width: 100%; -webkit-appearance: none; height: 8px; border-radius: 5px; background: #e2e8f0; outline: none; margin-top: 10px; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--primary); cursor: pointer; border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .slider-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: #64748b; margin-top: 5px; }
+
+        .btn-group { display: flex; gap: 10px; }
+        .btn { flex: 1; padding: 14px; border: none; border-radius: 15px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.2s; text-align: center; }
+        .btn-main { background: var(--primary); color: #fff; }
+        .btn-main:hover { opacity: 0.9; }
+        .btn-sub { background: #e2e8f0; color: #64748b; }
+        .btn-shop { background: var(--accent); color: #fff; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+        .name-input-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .name-input { flex: 1; padding: 10px 15px; border-radius: 12px; border: 1px solid #ccc; font-size: 1rem; outline: none; }
+        .name-input:focus { border-color: var(--primary); }
+        .name-input:disabled { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; padding: 15px; }
+        .modal-content { background: #fff; border-radius: 24px; padding: 25px; max-width: 500px; width: 100%; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.2); position: relative; max-height: 90vh; overflow-y: auto;}
+        .poster { background: linear-gradient(135deg, #f0fdf4, #e0f2fe); border: 2px solid var(--primary); border-radius: 16px; padding: 25px; margin: 20px 0; }
+        .close-btn { position: absolute; top: 15px; right: 15px; font-size: 1.5rem; cursor: pointer; border: none; background: none; z-index: 10;}
+        
+        .treehole-panel { display: block; margin-top: 15px; width: 100%; padding: 15px; background: #f8fafc; border-radius: 15px; border: 1px dashed #cbd5e1; }
+        .treehole-input { width: 100%; height: 80px; padding: 10px; border-radius: 10px; border: 1px solid #ccc; resize: none; font-size: 1rem; margin-bottom: 10px; font-family: inherit; word-break: break-word; white-space: pre-wrap; }
+        .treehole-input:focus { outline: none; border-color: var(--primary); }
+        
+        .ai-reply-box { background: linear-gradient(135deg, #e0f2fe, #f0fdf4); border-left: 4px solid var(--primary); padding: 12px 15px; border-radius: 10px; margin-top: 10px; font-size: 0.95rem; color: #334155; display: none; line-height: 1.5; }
+        .ai-reply-box .ai-label { font-weight: bold; color: var(--primary); margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;}
+        
+        .notes-panel { margin-top: 20px; padding: 20px; background: #fff; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        .notes-filter { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap; }
+        .notes-filter input[type="date"] { padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 0.9rem; outline: none; flex: 1; min-width: 140px; }
+        .notes-list { max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .note-item { background: #fefce8; border-left: 4px solid #facc15; padding: 12px 15px; border-radius: 10px; font-size: 0.95rem; word-break: break-word; }
+        .note-item .note-header { font-size: 0.85rem; color: #854d0e; font-weight: bold; margin-bottom: 5px; display: flex; justify-content: space-between; }
+        .note-item .note-content { color: #334155; margin-bottom: 8px; line-height: 1.5; }
+        .note-item .note-ai { background: #fff; padding: 8px 10px; border-radius: 8px; color: #0284c7; font-size: 0.9rem; border-left: 3px solid #38bdf8; line-height: 1.4; margin-top: 8px;}
+        .empty-notes { text-align: center; color: #94a3b8; padding: 30px; font-size: 0.9rem; }
+        
+        .speak-btn { background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--primary); margin-left: 5px; transition: transform 0.2s;}
+        .speak-btn:hover { transform: scale(1.2); }
+    </style>
+</head>
+<body>
+<div class="top-bar">
+        <div class="logo" id="ui-title">🌿 同理心花园</div>
+        <div class="stats">
+            <span id="ui-coin-label">🪙 金币: </span><span id="coin-count">0</span>
+            <span id="ui-day-label">📅 第 </span><span id="day-count">1</span><span>/30 天</span>
+        </div>
+        <div class="toolbar">
+            <select class="lang-select" id="lang-select">
+                <option value="zh-CN">简体中文</option>
+                <option value="zh-HK">繁體中文</option>
+                <option value="en">English</option>
+            </select>
+            <button class="icon-btn" id="btn-toggle-tts" title="开启/关闭语音朗读">🔊 朗读</button>
+            <button class="icon-btn" id="btn-toggle-contrast" title="切换高对比度弱视模式">👁️ 弱视模式</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="garden-stage" id="stage">
+            <div class="plant-name-tag" id="plant-name-tag">🌱 未命名</div>
+            <div class="plant-container" id="plant-container">
+                <div class="plant-img" id="plant-avatar">🌱</div>
+                <div class="roots" id="plant-roots"></div>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="name-input-group">
+                <input type="text" class="name-input" id="plant-name-input" placeholder="给你的专属植物起个名字" maxlength="100">
+                <button class="btn btn-shop" id="btn-save-name" style="flex: 0.4;">锁定名字</button>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px; gap:10px;">
+                <button class="btn btn-shop" id="btn-checkin">📆 每日善举打卡 (+200🪙)</button>
+                <button class="btn btn-shop" id="btn-fertilizer">🛡️ 添置防撞安全物资 (-10🪙)</button>
+            </div>
+
+            <div class="section-title"><span id="ui-mood-title">1. 体验后的心情标签</span></div>
+            <div class="color-picker">
+                <button class="color-btn active" data-mood="empathy">共情<small>理解真实对方</small></button>
+                <button class="color-btn" data-mood="helpless">无助<small>感到孤立无援</small></button>
+                <button class="color-btn" data-mood="secure">安心<small>被正确引导</small></button>
+                <button class="color-btn" data-mood="frustrated">挫败<small>遇冷言冷语</small></button>
+                <button class="color-btn" data-mood="reflect">反思<small>发现设施危机</small></button>
+            </div>
+
+            <div class="intensity-box">
+                <div class="section-title"><span id="ui-intensity-title">2. 情绪强烈程度 (1-5级)</span></div>
+                <input type="range" min="1" max="5" value="3" class="slider" id="intensity-slider">
+                <div class="slider-labels">
+                    <span>微弱</span><span>一般</span><span>中等</span><span>强烈</span><span>极深</span>
+                </div>
+            </div>
+
+            <div class="treehole-panel" id="treehole-panel">
+                <div class="section-title">💬 同理心树洞 & 障碍反馈墙</div>
+                
+                <div id="treehole-locked">
+                    <button class="btn btn-shop" id="btn-unlock-treehole" style="width:100%;">🔒 解锁树洞 (花费 20🪙)</button>
+                </div>
+                
+                <div id="treehole-unlocked" style="display:none;">
+                    <textarea class="treehole-input" id="treehole-input" placeholder="记录你被冷言冷语伤害时的感受，或者你在校园里发现的无障碍设施隐患（如：盲道被占用、缺少防撞角等）..."></textarea>
+                    <button class="btn btn-main" id="btn-send-treehole" style="width:100%;">💌 发送给树洞 / 提交反馈</button>
+                    
+                    <div class="ai-reply-box" id="ai-reply-box">
+                        <div class="ai-label">
+                            <span>🤖 树洞精灵 (同理心回响)：</span>
+                            <button class="speak-btn" id="btn-speak-reply" title="朗读回复">🔊</button>
+                        </div>
+                        <div id="ai-reply-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-group" style="margin-top:15px;">
+                <button class="btn btn-sub" id="btn-early">提前结算</button>
+                <button class="btn btn-main" id="btn-water">💧 转化并浇灌 (天数+1)</button>
+            </div>
+            
+            <div id="special-area" style="display:none; margin-top:15px;">
+                <button class="btn btn-main" id="btn-special" style="width:100%; background: linear-gradient(135deg, #d4a373, #f59e0b); font-size:1.1rem; padding: 16px;">🌸 获取最终专属同理心报告</button>
+            </div>
+        </div>
+
+        <div class="notes-panel">
+            <div class="section-title">📝 树洞回响 · 危机反馈记录</div>
+            <div class="notes-filter">
+                <input type="date" id="note-date-filter">
+                <button class="btn btn-sub" id="btn-clear-filter" style="flex: 0.5;">显示全部</button>
+            </div>
+            <div class="notes-list" id="notes-list">
+                <div class="empty-notes">暂无记录，快去解锁树洞写下你的体验或反馈吧～</div>
+            </div>
+        </div>
+    </div>
+      <div class="modal" id="report-modal">
+        <div class="modal-content">
+            <button class="close-btn" id="btn-close-modal">×</button>
+            <h2 id="modal-header">你的同理心花园报告</h2>
+            <div class="poster">
+                <h3 id="poster-title">《心之盆栽》</h3>
+                <div id="poster-plant-avatar" style="font-size: 5rem; margin: 15px 0;">🌸</div>
+                <h4 id="poster-plant-name" style="color:var(--primary); margin-bottom: 10px;">共情之花</h4>
+                <p id="poster-desc" style="font-size:0.95rem; color:#475569;"></p>
+                <div class="data-detail" id="poster-data-detail" style="font-size:0.8rem; color:#64748b; text-align:left; margin-top:15px; background:rgba(255,255,255,0.6); padding:10px; border-radius:10px;"></div>
+                <div style="margin-top: 15px; font-size: 0.85rem; border-top: 1px dashed #ccc; padding-top: 10px;" id="poster-meta">体验历程: 30天 | 善举次数: 30</div>
+            </div>
+            <p style="font-size:0.9rem;" id="ui-gift-text">🎁 恭喜获得线下小礼品：疗愈种子盲盒一套！</p>
+        </div>
+    </div>
+
+    <script>
+        // 多语言字典
+        const i18n = {
+            'zh-CN': {
+                title: '🌿 同理心花园', coin: '🪙 金币: ', day: '📅 第 ',
+                moodTitle: '1. 体验后的心情标签', intensityTitle: '2. 情绪强烈程度 (1-5级)',
+                checkin: '📆 每日善举打卡 (+200🪙)', fertilizer: '🛡️ 添置防撞安全物资 (-10🪙)',
+                early: '提前结算', water: '💧 转化并浇灌 (天数+1)',
+                treehole: '💬 同理心树洞 & 障碍反馈墙',
+                unlockBtn: '🔒 解锁树洞 (花费 20🪙)',
+                sendBtn: '💌 发送给树洞 / 提交反馈',
+                modalHeader: '你的同理心花园报告', posterTitle: '《心之盆栽》',
+                giftText: '🎁 恭喜获得线下小礼品：疗愈种子盲盒一套！',
+                moodNames: ['共情', '无助', '安心', '挫败', '反思'],
+                moodSubs: ['理解真实对方', '感到孤立无援', '被正确引导', '遇冷言冷语', '发现设施危机']
+            },
+            'zh-HK': {
+                title: '🌿 同理心花園', coin: '🪙 金幣: ', day: '📅 第 ',
+                moodTitle: '1. 體驗後的心情標籤', intensityTitle: '2. 情緒強烈程度 (1-5級)',
+                checkin: '📆 每日善舉打卡 (+200🪙)', fertilizer: '🛡️ 添置防撞安全物資 (-10🪙)',
+                early: '提前結算', water: '💧 轉化並澆灌 (天數+1)',
+                treehole: '💬 同理心樹洞 & 障礙反饋牆',
+                unlockBtn: '🔒 解鎖樹洞 (花費 20🪙)',
+                sendBtn: '💌 發送給樹洞 / 提交反饋',
+                modalHeader: '你的同理心花園報告', posterTitle: '《心之盆栽》',
+                giftText: '🎁 恭喜獲得線下小禮品：療愈種子盲盒一套！',
+                moodNames: ['共情', '無助', '安心', '挫敗', '反思'],
+                moodSubs: ['理解真實對方', '感到孤立無援', '被正確引導', '遇冷言冷語', '發現設施危機']
+            },
+            'en': {
+                title: '🌿 Empathy Garden', coin: '🪙 Coins: ', day: '📅 Day ',
+                moodTitle: '1. Mood after Experience', intensityTitle: '2. Intensity (1-5)',
+                checkin: '📆 Daily Good Deed (+200🪙)', fertilizer: '🛡️ Buy Safety Gear (-10🪙)',
+                early: 'Early Settle', water: '💧 Water & Grow (+1 Day)',
+                treehole: '💬 Empathy Tree Hole & Feedback',
+                unlockBtn: '🔒 Unlock Tree Hole (20🪙)',
+                sendBtn: '💌 Send / Submit Feedback',
+                modalHeader: 'Your Empathy Garden Report', posterTitle: '"Potted Heart"',
+                giftText: '🎁 Congrats! You got a Healing Seed Blind Box!',
+                moodNames: ['Empathy', 'Helpless', 'Secure', 'Frustrated', 'Reflect'],
+                moodSubs: ['Understand others', 'Blindfolded', 'Well-guided', 'Cold words', 'Find hazards']
+            }
+        };
+          function loadState() {
+            const saved = localStorage.getItem('empathyGardenState');
+            const base = defaultState();
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    return {
+                        coins: parsed.coins !== undefined ? parsed.coins : base.coins,
+                        day: parsed.day !== undefined ? parsed.day : base.day,
+                        mood: parsed.mood || base.mood,
+                        intensity: parsed.intensity || base.intensity,
+                        growth: parsed.growth || base.growth,
+                        fertilizerCount: parsed.fertilizerCount || base.fertilizerCount,
+                        waterCount: parsed.waterCount || base.waterCount,
+                        isFinished: parsed.isFinished || base.isFinished,
+                        plantName: parsed.plantName || base.plantName,
+                        history: Array.isArray(parsed.history) ? parsed.history : base.history,
+                        treeholeUnlocked: parsed.treeholeUnlocked !== undefined ? parsed.treeholeUnlocked : base.treeholeUnlocked,
+                        treeholeRecords: Array.isArray(parsed.treeholeRecords) ? parsed.treeholeRecords : base.treeholeRecords,
+                        notesFilterDate: parsed.notesFilterDate || base.notesFilterDate,
+                        lastCheckInDate: parsed.lastCheckInDate || base.lastCheckInDate,
+                        lastWaterDate: parsed.lastWaterDate || base.lastWaterDate,
+                        ttsEnabled: parsed.ttsEnabled || base.ttsEnabled,
+                        highContrast: parsed.highContrast || base.highContrast,
+                        language: parsed.language || base.language
+                    };
+                } catch(e) {}
+            }
+            return base;
+        }
+
+        function defaultState() {
+            return {
+                coins: 100, day: 1, mood: 'empathy', intensity: 3, growth: 0,
+                fertilizerCount: 0, waterCount: 0, isFinished: false, plantName: '',
+                history: [], treeholeUnlocked: true, treeholeRecords: [],
+                notesFilterDate: '', lastCheckInDate: '', lastWaterDate: '',
+                ttsEnabled: false, highContrast: false, language: 'zh-CN'
+            };
+        }
+
+        let state = loadState();
+
+        function saveState() {
+            localStorage.setItem('empathyGardenState', JSON.stringify(state));
+        }
+
+        const aiReplies = {
+            'empathy': ["当你戴上不同镜片，走进迷宫，你开始理解视障人士的真实世界。同理心，从认识真实的对方开始。", "你感受到了他们的困难，这份理解会化作你日后友善的行动。"],
+            'helpless': ["刚戴上眼罩，世界突然变黑，不知所措是正常的。试着深呼吸，感受手中的盲杖，慢慢来。", "在黑暗中，每一点声音都被放大。这正是视障朋友每天面对的世界。"],
+            'secure': ["很好的引导者！谢谢你让体验者感到安全。", "正确的引导让黑暗不再可怕，记住这份安全感，以后也用来帮助有需要的人。"],
+            'frustrated': ["冷言冷语像刺一样扎人。请记住，这只是模拟，真实生活中的视障人士每天都在面对这些。这让我们明些细节能拯救生命。白，少一点催促，多一点耐心。", "听到那些话一定很难受吧？情绪没有对错。试着深呼吸，再选择行动。"],
+            'reflect': ["谢谢你的细心观察。你发现了生活中无障碍设施面对的隐患！盲道被占用、高空悬空障碍等都是巨大的危险。你的反馈能推动改变！"]
+        };
+
+        // 全局语音朗读函数
+        function speak(text) {
+            if (!state.ttsEnabled || !('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel(); // 停止上一个语音
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = state.language === 'en' ? 'en-US' : (state.language === 'zh-HK' ? 'zh-HK' : 'zh-CN');
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // 初始化无障碍与语言设置
+            if (state.ttsEnabled) document.getElementById('btn-toggle-tts').classList.add('active');
+            if (state.highContrast) {
+                document.getElementById('btn-toggle-contrast').classList.add('active');
+                document.body.classList.add('high-contrast');
+            }
+            
+            changeLanguage(state.language);
+
+            // 绑定所有按钮事件
+            document.getElementById('btn-toggle-tts').addEventListener('click', function() {
+                state.ttsEnabled = !state.ttsEnabled;
+                this.classList.toggle('active');
+                saveState();
+                if (state.ttsEnabled) speak('已开启语音朗读功能');
+            });
+
+            document.getElementById('btn-toggle-contrast').addEventListener('click', function() {
+                state.highContrast = !state.highContrast;
+                this.classList.toggle('active');
+                document.body.classList.toggle('high-contrast');
+                saveState();
+            });
+
+            document.getElementById('lang-select').addEventListener('change', function() {
+                changeLanguage(this.value);
+            });
+
+            document.getElementById('btn-speak-reply').addEventListener('click', function() {
+                const content = document.getElementById('ai-reply-content').innerText;
+                if(content) speak(content);
+            });
+
+            document.getElementById('btn-checkin').addEventListener('click', dailyCheckIn);
+            document.getElementById('btn-fertilizer').addEventListener('click', buyFertilizer);
+            document.getElementById('btn-save-name').addEventListener('click', savePlantName);
+            document.getElementById('btn-water').addEventListener('click', pourEmotion);
+            document.getElementById('btn-early').addEventListener('click', function() { finishGarden(true, false); });
+            document.getElementById('btn-special').addEventListener('click', function() { finishGarden(false, true); });
+            document.getElementById('btn-close-modal').addEventListener('click', function() {
+                document.getElementById('report-modal').style.display = 'none';
+            });
+            document.getElementById('btn-unlock-treehole').addEventListener('click', unlockTreehole);
+            document.getElementById('btn-send-treehole').addEventListener('click', sendTreeholeContent);
+ // 修复：querySelectorAl -> querySelectorAll，并加上 speak 朗读标签
+            const colorBtns = document.querySelectorAll('.color-btn');
+            colorBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const mood = this.getAttribute('data-mood');
+                    if (mood) {
+                        state.mood = mood;
+                        colorBtns.forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+                        speak(this.querySelector('small').innerText); // 修复：smal -> small
+                    }
+                });
+            });
+
+            document.getElementById('note-date-filter').addEventListener('change', function() {
+                state.notesFilterDate = this.value;
+                saveState();
+                renderNotes();
+            });
+            
+            document.getElementById('btn-clear-filter').addEventListener('click', function() {
+                state.notesFilterDate = '';
+                document.getElementById('note-date-filter').value = '';
+                saveState();
+                renderNotes();
+            });
+
+            // 初始化界面
+            updateUI();
+            updateButtonStates();
+            updateTreeholeUI();
+            renderNotes();
+            checkGrowthStage();
+
+            if (state.plantName) {
+                document.getElementById('plant-name-tag').innerText = '🌱 ' + state.plantName;
+                document.getElementById('plant-name-tag').style.display = 'block';
+                const input = document.getElementById('plant-name-input');
+                input.value = state.plantName;
+                input.disabled = true;
+                document.getElementById('btn-save-name').disabled = true;
+                document.getElementById('btn-save-name').innerText = '已锁定';
+            }
+
+            // 给所有 section-title 动态添加朗读按钮
+            document.querySelectorAll('.section-title').forEach(title => {
+                if (!title.querySelector('.speak-btn')) {
+                    const btn = document.createElement('button');
+                    btn.className = 'speak-btn';
+                    btn.innerText = '🔊';
+                    btn.onclick = () => speak(title.innerText.replace('🔊', '').trim());
+                    title.appendChild(btn);
+                }
+            });
+        });
+
+        // 语言切换功能
+        function changeLanguage(lang) {
+            state.language = lang;
+            const t = i18n[lang];
+            if (!t) return;
+
+            document.getElementById('ui-title').innerText = t.title;
+            document.getElementById('ui-coin-label').innerText = t.coin;
+            document.getElementById('ui-day-label').innerText = t.day;
+            document.getElementById('ui-mood-title').innerText = t.moodTitle;
+            document.getElementById('ui-intensity-title').innerText = t.intensityTitle;
+            document.getElementById('btn-checkin').innerText = t.checkin;
+            document.getElementById('btn-fertilizer').innerText = t.fertilizer;
+            document.getElementById('btn-early').innerText = t.early;
+            document.getElementById('btn-water').innerText = t.water;
+            document.getElementById('treehole-panel').querySelector('.section-title').childNodes[0].nodeValue = t.treehole + ' ';
+            document.getElementById('btn-unlock-treehole').innerText = t.unlockBtn;
+            document.getElementById('btn-send-treehole').innerText = t.sendBtn;
+            document.getElementById('modal-header').innerText = t.modalHeader;
+            document.getElementById('poster-title').innerText = t.posterTitle;
+            document.getElementById('ui-gift-text').innerText = t.giftText;
+
+            // 更新情绪按钮文字
+            const colorBtns = document.querySelectorAll('.color-btn');
+            if(colorBtns.length >= 5) {
+                colorBtns[0].innerHTML = t.moodNames[0] + '<small>' + t.moodSubs[0] + '</small>';
+                colorBtns[1].innerHTML = t.moodNames[1] + '<small>' + t.moodSubs[1] + '</small>';
+                colorBtns[2].innerHTML = t.moodNames[2] + '<small>' + t.moodSubs[2] + '</small>';
+                colorBtns[3].innerHTML = t.moodNames[3] + '<small>' + t.moodSubs[3] + '</small>';
+                colorBtns[4].innerHTML = t.moodNames[4] + '<small>' + t.moodSubs[4] + '</small>';
+            }
+
+            saveState();
+        }
+
+        function updateUI() {
+            document.getElementById('coin-count').innerText = state.coins;
+            document.getElementById('day-count').innerText = state.day;
+        }
+
+        function updateButtonStates() {
+            const checkinBtn = document.getElementById('btn-checkin');
+            const waterBtn = document.getElementById('btn-water');
+            const specialArea = document.getElementById('special-area');
+            const earlyBtn = document.getElementById('btn-early');
+            
+            const today = new Date().toDateString();
+
+            if (state.isFinished) {
+                checkinBtn.disabled = true;
+                waterBtn.disabled = true;
+                earlyBtn.disabled = true;
+                specialArea.style.display = 'block';
+            } else {
+                checkinBtn.disabled = state.lastCheckInDate === today;
+                // 修复：单竖线 | 改为逻辑或 ||
+                waterBtn.disabled = state.lastCheckInDate !== today || state.lastWaterDate === today;
+                earlyBtn.disabled = false;
+                specialArea.style.display = 'none';
+            }
+        }
+
+        function updateTreeholeUI() {
+            if (state.treeholeUnlocked) {
+                document.getElementById('treehole-locked').style.display = 'none';
+                document.getElementById('treehole-unlocked').style.display = 'block';
+            } else {
+                document.getElementById('treehole-locked').style.display = 'block';
+                document.getElementById('treehole-unlocked').style.display = 'none';
+            }
+        }
+       function unlockTreehole() {
+            if (state.coins >= 80) {
+                state.coins -= 80;
+                state.treeholeUnlocked = true;
+                saveState();
+                updateUI();
+                updateTreeholeUI();
+                showFloatText("🔓 同理心树洞已解锁！");
+                speak("同理心树洞已解锁！");
+            } else {
+                alert('金币不足！解锁树洞需要 80 金币。');
+                speak("金币不足，无法解锁");
+            }
+        }
+
+        function dailyCheckIn() {
+            const today = new Date().toDateString();
+            if (state.lastCheckInDate === today) return;
+            state.coins += 200;
+            state.lastCheckInDate = today; 
+            saveState();
+            updateUI();
+            updateButtonStates();
+            showFloatText("+200 🪙 善举打卡成功");
+            speak("善举打卡成功，获得200金币");
+        }
+
+        function buyFertilizer() {
+            if (state.coins >= 10) {
+                state.coins -= 10;
+                state.fertilizerCount += 1;
+                state.growth += 20;
+                saveState();
+                updateUI();
+                checkGrowthStage();
+                showFloatText("🛡️ 安全物资添置成功！(-10🪙)");
+                speak("安全物资添置成功");
+            } else {
+                alert("金币不足！需要 10 金币。");
+                speak("金币不足");
+            }
+        }
+
+        function savePlantName() {
+            const input = document.getElementById('plant-name-input');
+            const name = input.value.trim();
+            if (!name) return alert("请先输入一个名字！");
+            state.plantName = name;
+            document.getElementById('plant-name-tag').innerText = '🌱 ' + name;
+            document.getElementById('plant-name-tag').style.display = 'block';
+            input.disabled = true;
+            document.getElementById('btn-save-name').disabled = true;
+            document.getElementById('btn-save-name').innerText = '已锁定';
+            saveState();
+            showFloatText('已命名为「' + name + '」');
+            speak("植物已命名为" + name);
+        }
+
+        function pourEmotion() {
+            if (state.isFinished) return;
+            const today = new Date().toDateString();
+            if (state.lastCheckInDate !== today) return showFloatText("请先善举打卡，开启新的一天");
+            if (state.lastWaterDate === today) return showFloatText("今天已经浇灌过了，明天再来吧！");
+
+            const intensity = parseInt(document.getElementById('intensity-slider').value);
+            state.intensity = intensity;
+            state.waterCount++;
+            state.growth += (intensity * 2);
+            state.day += 1;
+
+            state.history.push({ day: state.day - 1, mood: state.mood, intensity: intensity });
+
+            if (state.day >= 30) {
+                state.day = 30;
+                state.isFinished = true;
+            }
+
+            state.lastWaterDate = today;
+            saveState();
+
+            createWaterDrop();
+            const messages = {
+                'empathy': '共情正在生根发芽 💜', 'helpless': '无助感化作了理解的养分 🩶',
+                'secure': '安心带来了温暖的阳光 🍀', 'frustrated': '挫败正在被勇敢吸收 🪴',
+                'reflect': '反思正在筑起安全的屏障 🛡️'
+            };
+            // 修复：单竖线 | 改为双竖线 ||
+            const msg = messages[state.mood] || "情绪被转化了";
+            showFloatText(msg);
+            speak(msg);
+
+            checkGrowthStage();
+            updateUI();
+            updateButtonStates();
+
+            if (state.isFinished) setTimeout(() => finishGarden(false, true), 1000);
+        }
+
+        function createWaterDrop() {
+            const stage = document.getElementById('stage');
+            const drop = document.createElement('div');
+            drop.className = 'water-drop';
+            drop.innerText = '💧';
+            drop.style.left = (40 + Math.random() * 20) + '%';
+            stage.appendChild(drop);
+            setTimeout(() => { if (drop.parentNode) drop.parentNode.removeChild(drop); }, 1000);
+        }
+
+        function showFloatText(text) {
+            const stage = document.getElementById('stage');
+            const floatText = document.createElement('div');
+            floatText.className = 'float-text';
+            floatText.innerText = text;
+            floatText.style.left = (30 + Math.random() * 40) + '%';
+            stage.appendChild(floatText);
+            setTimeout(() => { if (floatText.parentNode) floatText.parentNode.removeChild(floatText); }, 1500);
+        }
+
+        function checkGrowthStage() {
+            const plantAvatar = document.getElementById('plant-avatar');
+            const plantRoots = document.getElementById('plant-roots');
+
+            if (state.growth < 30) {
+                plantAvatar.innerText = '🌱'; plantRoots.style.width = '20px';
+                plantAvatar.classList.remove('special-glow');
+            } else if (state.growth < 60) {
+                plantAvatar.innerText = '🌿'; plantRoots.style.width = '30px';
+                plantAvatar.classList.remove('special-glow');
+            } else if (state.growth < 100) {
+                plantAvatar.innerText = '🪴'; plantRoots.style.width = '40px';
+                plantAvatar.classList.remove('special-glow');
+            } else {
+                const emojiMap = { empathy: '🌹', helpless: '🌵', secure: '🍀', frustrated: '🪻', reflect: '🛡️' };
+                // 修复：单竖线 | 改为双竖线 ||
+                plantAvatar.innerText = emojiMap[state.mood] || '🌱';
+                plantRoots.style.width = '60px'; plantRoots.style.height = '15px';
+                plantAvatar.classList.add('special-glow');
+            }
+        }
+
+        function generateAIReply(text, mood) {
+            let reply = '';
+            const t = text.toLowerCase();
+
+            if (t.includes('撞') || t.includes('跌') || t.includes('枱角') || t.includes('危险') || t.includes('盲道') || t.includes('杂物')) {
+                reply = '你提到的安全隐患非常重要！盲道被杂物占用都是真实存在的风险。感谢你的记录，这能帮助更多人意识到环境安全的重要性。';
+            } else if (t.includes('冷言冷语') || t.includes('骂') || t.includes('生气') || t.includes('唔该')) {
+                reply = '面对冷言冷语，感到挫败和愤怒是正常的。情绪像一阵风，试着先停下来，深呼吸，觉察身体的感受。你可以选择不被这些语言伤害。';
+            } else if (t.includes('帮') || t.includes('引路') || t.includes('手')) {
+                reply = '真正的帮助是「问对方需要什么」，而不是「我觉得你需要什么」。一句「请问需要协助吗？」就是最好的关怀。';
+            } else {
+                const replyPool = aiReplies[mood] || aiReplies['empathy'];
+                reply = replyPool[Math.floor(Math.random() * replyPool.length)];
+            }
+            return reply;
+        }
+
+        function sendTreeholeContent() {
+            const input = document.getElementById('treehole-input');
+            const content = input.value.trim();
+            if (!content) return alert("请先写下你想说的话～");
+
+            const now = new Date();
+            const dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+            const timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+            
+            const mood = state.mood || 'empathy';
+            const aiReply = generateAIReply(content, mood); 
+            
+            const record = { date: dateStr, time: timeStr, content: content, mood: mood, aiReply: aiReply };
+            state.treeholeRecords.unshift(record);
+            saveState();
+            
+            const replyBox = document.getElementById('ai-reply-box');
+            document.getElementById('ai-reply-content').innerText = aiReply;
+            replyBox.style.display = 'block';
+            
+            // 触发全局朗读
+            speak(aiReply);
+            
+            input.value = '';
+            renderNotes();
+            showFloatText("💌 已记录到同理心便签");
+        }
+
+        function renderNotes() {
+            const list = document.getElementById('notes-list');
+            let records = Array.isArray(state.treeholeRecords) ? state.treeholeRecords : [];
+            if (state.notesFilterDate) {
+                records = records.filter(r => r.date === state.notesFilterDate);
+            }
+            
+            if (records.length === 0) {
+                list.innerHTML = '<div class="empty-notes">' + (state.notesFilterDate ? '该日期暂无记录～' : '暂无记录，快去记录你的体验或发现吧～') + '</div>';
+                return;
+            }
+            
+            const moodEmoji = { empathy: '💜', helpless: '🩶', secure: '🍀', frustrated: '🪻', reflect: '🛡️' };
+            const moodNames = { empathy: '共情', helpless: '无助', secure: '安心', frustrated: '挫败', reflect: '反思' };
+            
+            list.innerHTML = records.map(r => 
+                '<div class="note-item">' +
+                    '<div class="note-header">' +
+                        '<span>' + (moodEmoji[r.mood] || '💭') + ' ' + escapeHtml(r.date) + ' ' + escapeHtml(r.time) + '</span>' +
+                        '<span style="color:#64748b;">' + escapeHtml(moodNames[r.mood] || '体验') + '</span>' +
+                    '</div>' +
+                    '<div class="note-content">' + escapeHtml(r.content) + '</div>' +
+                    '<div class="note-ai">🤖 ' + escapeHtml(r.aiReply) + '</div>' +
+                '</div>'
+            ).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+  function calculateReportData() {
+            let stats = {
+                empathy: { days: 0, totalIntensity: 0, avg: 0, score: 0, percentage: 0 },
+                helpless: { days: 0, totalIntensity: 0, avg: 0, score: 0, percentage: 0 },
+                secure: { days: 0, totalIntensity: 0, avg: 0, score: 0, percentage: 0 },
+                frustrated: { days: 0, totalIntensity: 0, avg: 0, score: 0, percentage: 0 },
+                reflect: { days: 0, totalIntensity: 0, avg: 0, score: 0, percentage: 0 }
+            };
+
+            const history = Array.isArray(state.history) ? state.history : [];
+            history.forEach(record => {
+                if (stats[record.mood]) {
+                    stats[record.mood].days++;
+                    stats[record.mood].totalIntensity += record.intensity;
+                }
+            });
+
+            let totalScore = 0;
+            for (let key in stats) {
+                stats[key].avg = stats[key].days > 0 ? (stats[key].totalIntensity / stats[key].days) : 0;
+                stats[key].score = stats[key].days * stats[key].avg;
+                totalScore += stats[key].score;
+            }
+            for (let key in stats) {
+                stats[key].percentage = totalScore > 0 ? (stats[key].score / totalScore) * 100 : 0;
+            }
+            return { stats, totalScore };
+        }
+
+        function finishGarden(isEarly, isSpecial = false) {
+            if (state.history.length === 0 && !isEarly) return alert("小树还没有成长，快去体验并浇灌吧！");
+
+            const reportData = calculateReportData();
+            const stats = reportData.stats;
+            const plantName = state.plantName || '未命名小苗';
+            
+            let maxScore = -1, maxMood = 'empathy';
+            for (let key in stats) {
+                if (stats[key].score > maxScore) { maxScore = stats[key].score; maxMood = key; }
+            }
+
+            const plantDict = {
+                'empathy': { name: '共情幻彩玫瑰', emoji: '🌹', desc: '你的情绪波动如幻彩般绚丽，你深刻理解了视障朋友的多面处境。', specialDesc: '专属幻彩玫瑰：同理心的多面反馈，反映出最真实、最包容的内心世界。' },
+                'helpless': { name: '坚韧仙人掌', emoji: '🌵', desc: '初入黑暗的无助让你长出刺来保护自己，但内心依然坚韧。', specialDesc: '专属仙人掌：在逆境中顽强生存，终将开出美丽的花。' },
+                'secure': { name: '幸运四叶草', emoji: '🍀', desc: '被正确引导的安全感带给你好运，你懂得如何传递这份温暖。', specialDesc: '专属四叶草：宁静与幸运的象征，你是别人黑暗中的光。' },
+                'frustrated': { name: '蓝鸢尾', emoji: '🪻', desc: '挫败与冷言冷语是深刻的养分，你在湿润的土壤中学会了坚强。', specialDesc: '专属蓝鸢尾：在泪水中成长，用同理心融化冷漠。' },
+                'reflect': { name: '安全守护向日葵', emoji: '🛡️', desc: '你的反思与细心，像阳光一样照亮了校园的安全盲区。', specialDesc: '专属守护向日葵：用行动扫除障碍，永远向着光明与希望生长。' }
+            };
+
+            const data = plantDict[maxMood] || plantDict['empathy'];
+            const avatarEl = document.getElementById('poster-plant-avatar');
+            const nameEl = document.getElementById('poster-plant-name');
+            const descEl = document.getElementById('poster-desc');
+            const titleEl = document.getElementById('poster-title');
+            const dataDetailEl = document.getElementById('poster-data-detail');
+
+            const formatStat = (label, stat) => '<div>' + label + ': ' + stat.days + '天 | 均浓: ' + stat.avg.toFixed(1) + ' | 占比: ' + stat.percentage.toFixed(1) + '%</div>';
+            
+            dataDetailEl.innerHTML = 
+                '<div style="margin-bottom:5px; font-weight:bold; color:var(--primary);">📊 同理心体验数据</div>' +
+                formatStat('💜 共情', stats.empathy) +
+                formatStat('🩶 无助', stats.helpless) +
+                formatStat('🍀 安心', stats.secure) +
+                formatStat('🪻 挫败', stats.frustrated) +
+                formatStat('🛡️ 反思', stats.reflect);
+ if (isSpecial || state.isFinished) {
+                avatarEl.innerText = data.emoji;
+                avatarEl.style.fontSize = '7rem';
+                avatarEl.classList.add('special-glow');
+                nameEl.innerText = '「' + plantName + '」 - ' + data.name;
+                descEl.innerText = data.specialDesc;
+                titleEl.innerText = '《最终专属同理心盆栽》';
+                document.getElementById('modal-header').innerText = '🌸 30天同理心花园报告';
+            } else {
+                avatarEl.innerText = data.emoji;
+                avatarEl.style.fontSize = '5rem';
+                avatarEl.classList.remove('special-glow');
+                nameEl.innerText = '「' + plantName + '」 - ' + data.name + ' (幼苗)';
+                descEl.innerText = data.desc + " (阶段性结算报告)";
+                titleEl.innerText = '《心之盆栽·阶段报告》';
+                document.getElementById('modal-header').innerText = '🌱 当前阶段同理心报告';
+            }
+
+            document.getElementById('poster-meta').innerText = '体验历程: ' + state.history.length + '天 | 善举次数: ' + state.waterCount + ' | 物资添置: ' + state.fertilizerCount + '次';
+            document.getElementById('report-modal').style.display = 'flex';
+            speak("正在生成报告");
+        }
+    </script>
+</body>
+</html>
